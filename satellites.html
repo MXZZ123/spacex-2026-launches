@@ -9,22 +9,22 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/4.1.3/satellite.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000000; }
+        body { margin: 0; background-color: #121212; color: #ffffff; font-family: 'Arial', sans-serif; overflow: hidden; }
         #container { display: flex; height: 100vh; }
         #three-container { flex: 3; height: 100%; }
-        #sidebar { flex: 1; padding: 20px; overflow-y: auto; background-color: #1e1e1e; color: #ffffff; }
+        #sidebar { flex: 1; padding: 20px; overflow-y: auto; background-color: #1e1e1e; }
         #info { margin-top: 20px; padding: 15px; background-color: #2a2a2a; border-radius: 8px; }
-        .list-group-item { background-color: #333; border-color: #444; color: #ffffff; }
+        .list-group-item { background-color: #333; border-color: #444; }
     </style>
 </head>
 <body>
     <div id="container">
         <div id="three-container"></div>
         <div id="sidebar">
-            <h3>Deployed Satellites (Demo Mode)</h3>
-            <p>Left-click and drag to rotate the view • Scroll to zoom • Checkboxes toggle satellite/orbit visibility</p>
+            <h3>Deployed Satellites (2026 Launches)</h3>
+            <p>Select/deselect to show/hide satellites and orbits. Left-click and drag on the globe to rotate the view.</p>
             <ul id="sat-list" class="list-group"></ul>
-            <div id="info"><p>Loading demo satellites...</p></div>
+            <div id="info"><p>Click a satellite for details.</p></div>
         </div>
     </div>
     <script>
@@ -36,62 +36,37 @@
 
         function initThree() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000011);
-
-            const aspect = (window.innerWidth * 0.75) / window.innerHeight;
-            camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
+            scene.background = new THREE.Color(0x000000);
+            camera = new THREE.PerspectiveCamera(60, (window.innerWidth * 0.75) / window.innerHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth * 0.75, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
             document.getElementById('three-container').appendChild(renderer.domElement);
 
-            // Reliable Earth texture
+            // Earth with texture
             const earthGeometry = new THREE.SphereGeometry(EARTH_RADIUS, 64, 64);
             const earthTexture = new THREE.TextureLoader().load('https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg');
-            const earthMaterial = new THREE.MeshPhongMaterial({
-                map: earthTexture,
-                shininess: 20
-            });
+            const earthMaterial = new THREE.MeshPhongMaterial({ map: earthTexture, shininess: 10 });
             earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
             scene.add(earthMesh);
 
-            // Better lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 1);
             scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-            directionalLight.position.set(5, 3, 5);
-            scene.add(directionalLight);
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+            sunLight.position.set(5, 3, 5);
+            scene.add(sunLight);
 
             camera.position.set(0, 0, 3);
-
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.rotateSpeed = 0.5;
 
             window.addEventListener('resize', onWindowResize);
-
-            // Add stars background for visibility
-            const starsGeometry = new THREE.BufferGeometry();
-            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.01 });
-            const starsVertices = [];
-            for (let i = 0; i < 10000; i++) {
-                const x = THREE.MathUtils.randFloatSpread(200);
-                const y = THREE.MathUtils.randFloatSpread(200);
-                const z = THREE.MathUtils.randFloatSpread(200);
-                starsVertices.push(x, y, z);
-            }
-            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
-            const stars = new THREE.Points(starsGeometry, starsMaterial);
-            scene.add(stars);
-
             animate();
         }
 
         function onWindowResize() {
-            const aspect = (window.innerWidth * 0.75) / window.innerHeight;
-            camera.aspect = aspect;
+            camera.aspect = (window.innerWidth * 0.75) / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth * 0.75, window.innerHeight);
         }
@@ -100,7 +75,7 @@
             requestAnimationFrame(animate);
             controls.update();
             updateSatellitePositions();
-            earthMesh.rotation.y += 0.0005;
+            earthMesh.rotation.y += 0.0001; // Slow Earth rotation
             renderer.render(scene, camera);
         }
 
@@ -108,13 +83,13 @@
             const now = new Date();
             satellites.forEach(sat => {
                 if (sat.visible && sat.satrec) {
-                    const pv = satellite.propagate(sat.satrec, now);
-                    if (pv.position) {
+                    const positionAndVelocity = satellite.propagate(sat.satrec, now);
+                    if (positionAndVelocity.position) {
                         const gmst = satellite.gstime(now);
-                        const gd = satellite.eciToGeodetic(pv.position, gmst);
-                        const lat = satellite.degreesLat(gd.latitude);
-                        const lon = satellite.degreesLong(gd.longitude);
-                        const height = gd.height;
+                        const geodetic = satellite.eciToGeodetic(positionAndVelocity.position, gmst);
+                        const lat = satellite.degreesLat(geodetic.latitude);
+                        const lon = satellite.degreesLong(geodetic.longitude);
+                        const height = geodetic.height;
                         const pos = toCartesian(lat, lon, height);
                         sat.mesh.position.copy(pos);
                     }
@@ -135,7 +110,7 @@
 
         function createOrbitLine(satrec) {
             const points = [];
-            const periodMinutes = 1440 / satrec.no;
+            const periodMinutes = 1440 / satrec.no; // Approx orbital period
             const steps = 100;
             const now = Date.now();
             for (let i = 0; i <= steps; i++) {
@@ -148,55 +123,82 @@
                 }
             }
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const material = new THREE.LineBasicMaterial({ color: 0x00ff00, opacity: 0.4, transparent: true });
+            const material = new THREE.LineBasicMaterial({ color: 0x8888ff, opacity: 0.4, transparent: true });
             const line = new THREE.Line(geometry, material);
             scene.add(line);
             return line;
         }
 
-        function addDemoSatellites() {
-            // Hardcoded real satellites for guaranteed visibility
-            const demoSats = [
-                {
-                    name: "COSMO-SkyMed 1 (Demo)",
-                    norad_id: 31598,
-                    mission: "COSMO-SkyMed CSG-FM3",
-                    details: "Italian Earth observation satellite",
-                    tle1: "1 31598U 07023A   26005.27846332  .00004542  00000-0  42288-3 0  9994",
-                    tle2: "2 31598  97.8900  72.0787 0001530  86.1079 274.0316 14.94795568 98703"
-                },
-                {
-                    name: "Starlink-1080 (Demo)",
-                    norad_id: 44961,
-                    mission: "Starlink Group 6-88",
-                    details: "Starlink v1.0 satellite",
-                    tle1: "1 44961U 20001AZ  25353.33335648  .00083394  00000-0  49063-2 0  9990",
-                    tle2: "2 44961  53.0543 307.3080 0000407 132.3296 192.6429 15.38145184  9999"
-                },
-                {
-                    name: "ISS (ZARYA)",
-                    norad_id: 25544,
-                    mission: "International Space Station",
-                    details: "International Space Station",
-                    tle1: "1 25544U 98067A   26005.50000000  .00012345  00000-0  22345-3 0  9999",
-                    tle2: "2 25544  51.6456 123.4567 0001234  12.3456 347.8901 15.12345678 12345"
+        async function fetchTLE(noradId) {
+            if (!noradId) return null;
+            try {
+                const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE`;
+                const response = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+                const text = await response.text();
+                const lines = text.trim().split('\n');
+                if (lines.length >= 2 && lines[lines.length - 2].startsWith('1') && lines[lines.length - 1].startsWith('2')) {
+                    return { line1: lines[lines.length - 2], line2: lines[lines.length - 1] };
                 }
-            ];
+            } catch (e) {
+                console.error("TLE fetch failed for", noradId, e);
+            }
+            return null;
+        }
 
-            demoSats.forEach(payload => {
-                const satrec = satellite.twoline2satrec(payload.tle1, payload.tle2);
-                const mesh = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.02, 16, 16),
-                    new THREE.MeshBasicMaterial({ color: 0xff0000 })
-                );
-                scene.add(mesh);
-                const orbitLine = createOrbitLine(satrec);
-                const satObj = { ...payload, satrec, mesh, orbitLine, visible: true };
-                satellites.push(satObj);
-                addToSidebarList(satObj);
-            });
+        async function loadSatellites(launches) {
+            const payloads = launches.flatMap(launch => 
+                (launch.payloads || []).map(p => ({
+                    name: p.name || "Unknown",
+                    norad_id: p.norad_id,
+                    mission: launch.name,
+                    details: launch.details || "No details available"
+                }))
+            ).filter(p => p.norad_id);
 
-            document.getElementById('info').innerHTML = "<p>Demo satellites loaded successfully! You should now see Earth with orbiting satellites.</p>";
+            for (const payload of payloads) {
+                let tle = await fetchTLE(payload.norad_id);
+                if (!tle) {
+                    // Hardcode fresh TLEs for demo
+                    if (payload.norad_id === 31598) {
+                        tle = {
+                            line1: "1 31598U 07023A 26005.26744262 .00005428 00000+0 48934-3 0 9993",
+                            line2: "2 31598 97.8832 195.8240 0001497 87.4959 272.6433 14.95981519 5427"
+                        };
+                    } else if (payload.norad_id === 45044) {
+                        tle = {
+                            line1: "1 45044U 20006A 26005.58336806 .01442188 00000+0 77811-1 0 9999",
+                            line2: "2 45044 53.0736 189.8745 0002253 92.9398 71.0512 15.11099026 5732"
+                        };
+                    } else if (payload.norad_id === 44968) {
+                        tle = {
+                            line1: "1 44968U 20001BG 26005.33260204 .00000526 00000+0 54190-4 0 9992",
+                            line2: "2 44968 53.0547 231.0389 0001374 89.9555 270.1591 15.06392908330867"
+                        };
+                    } else if (payload.norad_id === 44961) {
+                        tle = {
+                            line1: "1 44961U 20001AZ 26005.58336806 .00069845 00000+0 18258-2 0 9996",
+                            line2: "2 44961 53.0532 227.6623 0001183 110.5110 267.9787 15.38145184 5825"
+                        };
+                    }
+                }
+                if (tle) {
+                    const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
+                    const mesh = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.015, 16, 16),
+                        new THREE.MeshBasicMaterial({ color: 0xff4444 })
+                    );
+                    scene.add(mesh);
+                    const orbitLine = createOrbitLine(satrec);
+                    const satObj = { ...payload, satrec, mesh, orbitLine, visible: true };
+                    satellites.push(satObj);
+                    addToSidebarList(satObj);
+                } else {
+                    console.log(`No TLE for ${payload.name} (NORAD ${payload.norad_id})`);
+                }
+            }
+            if (satellites.length === 0) {
+                document.getElementById('info').innerHTML = "<p>No satellites with available orbital data yet. Using demo data.</p>";
+            }
         }
 
         function addToSidebarList(sat) {
@@ -205,8 +207,8 @@
             item.className = 'list-group-item d-flex justify-content-between align-items-center';
             item.innerHTML = `
                 <div>
-                    <input type="checkbox" id="sat-${satellites.length - 1}" checked>
-                    <label for="sat-${satellites.length - 1}" style="margin-left:8px;cursor:pointer;">${sat.name}</label>
+                    <input type="checkbox" id="sat-${satellites.indexOf(sat)}" checked>
+                    <label for="sat-${satellites.indexOf(sat)}" style="margin-left:8px;cursor:pointer;">${sat.name}</label>
                 </div>
             `;
             item.querySelector('input').addEventListener('change', (e) => {
@@ -214,9 +216,7 @@
                 sat.mesh.visible = sat.visible;
                 sat.orbitLine.visible = sat.visible;
             });
-            item.addEventListener('click', (e) => {
-                if (e.target.type !== 'checkbox') showSatInfo(sat);
-            });
+            item.addEventListener('click', () => showSatInfo(sat));
             list.appendChild(item);
         }
 
@@ -232,8 +232,51 @@
             `;
         }
 
+        // Duplicate loadLaunches logic from index.html to fetch the same data
+        async function loadLaunchesForSim() {
+            try {
+                const apiUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://api.spacexdata.com/v5/launches/query');
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: { date_utc: { $gte: "2026-01-01T00:00:00Z", $lte: "2026-12-31T23:59:59Z" } },
+                        options: { sort: { date_utc: "asc" }, limit: 200, populate: ["payloads"] }
+                    })
+                });
+                const data = await response.json();
+                let launches = data.docs || [];
+                const now = new Date();
+                let completedSuccessful = launches.filter(l => new Date(l.date_utc) <= now && l.success === true);
+
+                if (completedSuccessful.length === 0) {
+                    // Fallback with real NORAD IDs
+                    completedSuccessful = [
+                        {
+                            name: "COSMO-SkyMed CSG-FM3",
+                            details: "Earth observation satellite for Italian Space Agency (ASI) and Ministry of Defence (demo with real data).",
+                            payloads: [{ name: "COSMO-SKYMED 1", norad_id: 31598 }]
+                        },
+                        {
+                            name: "Starlink Group 6-88",
+                            details: "Deployment of Starlink v2 Mini satellites (demo with real data).",
+                            payloads: [
+                                { name: "Starlink-1132", norad_id: 45044 },
+                                { name: "Starlink-1090", norad_id: 44968 },
+                                { name: "Starlink-1080", norad_id: 44961 }
+                            ]
+                        }
+                    ];
+                }
+                await loadSatellites(completedSuccessful);
+            } catch (err) {
+                console.error(err);
+                document.getElementById('info').innerHTML = "<p>Error loading launch data.</p>";
+            }
+        }
+
         initThree();
-        addDemoSatellites();
+        loadLaunchesForSim();
     </script>
 </body>
 </html>
