@@ -6,10 +6,74 @@
     <title>SpaceX 2026 Launch Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { padding: 20px; background-color: #f8f9fa; }
-        .summary-card { text-align: center; padding: 20px; margin-bottom: 20px; }
-        .patch-img { width: 60px; height: auto; }
-        .achievements { font-size: 0.9em; }
+        body {
+            padding: 20px;
+            background-color: #121212; /* Dark background for SpaceX theme */
+            color: #ffffff; /* Light text */
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        h1 {
+            color: #ffffff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .summary-card {
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .summary-card:hover {
+            transform: scale(1.05);
+        }
+        .summary-card h3, .summary-card h4 {
+            margin-bottom: 5px;
+        }
+        .summary-card p {
+            margin: 0;
+            font-size: 0.9em;
+        }
+        .patch-img {
+            width: 60px;
+            height: auto;
+            border-radius: 4px;
+        }
+        .achievements {
+            font-size: 0.9em;
+        }
+        .table {
+            background-color: #1e1e1e;
+            color: #ffffff;
+        }
+        .table thead th {
+            background-color: #333333;
+            color: #ffffff;
+        }
+        .table tbody tr:nth-child(odd) {
+            background-color: #2a2a2a;
+        }
+        .table tbody tr:hover {
+            background-color: #3c3c3c;
+        }
+        .alert-info {
+            background-color: #2a2a2a;
+            color: #ffffff;
+            border-color: #444444;
+        }
+        footer {
+            color: #aaaaaa;
+        }
+        /* Custom colors for cards */
+        .bg-primary { background-color: #0d6efd !important; } /* Total */
+        .bg-info { background-color: #17a2b8 !important; } /* Falcons */
+        .bg-dark { background-color: #343a40 !important; } /* Starship */
+        .bg-success { background-color: #28a745 !important; } /* ISS */
+        .bg-warning { background-color: #ffc107 !important; color: #212529 !important; } /* Rideshare */
+        .bg-secondary { background-color: #6c757d !important; } /* Commercial/Private */
     </style>
 </head>
 <body>
@@ -17,7 +81,7 @@
         <h1 class="text-center my-4">SpaceX Launch Tracker – 2026</h1>
         <p class="text-center text-muted" id="last-updated">Loading data...</p>
 
-        <div class="row" id="summary-row"></div>
+        <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3" id="summary-row"></div> <!-- Improved grid with gaps -->
 
         <h2 class="mt-5">Completed Successful Launches</h2>
         <div id="launches-table"></div>
@@ -34,7 +98,9 @@
     <script>
         async function loadLaunches() {
             try {
-                const response = await fetch('https://api.spacexdata.com/v5/launches/query', {
+                // Use CORS proxy to bypass potential CORS issues with POST
+                const apiUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://api.spacexdata.com/v5/launches/query');
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -135,15 +201,15 @@
                 // Summary cards
                 const summaryRow = document.getElementById('summary-row');
                 summaryRow.innerHTML = `
-                    <div class="col-md-3"><div class="card summary-card bg-primary text-white"><h3>${total}</h3><p>Total Successful Launches</p></div></div>
-                    <div class="col-md-3"><div class="card summary-card bg-info text-white"><h3>${falcon9}</h3><p>Falcon 9</p></div></div>
-                    <div class="col-md-3"><div class="card summary-card bg-info text-white"><h3>${falconHeavy}</h3><p>Falcon Heavy</p></div></div>
-                    <div class="col-md-3"><div class="card summary-card bg-dark text-white"><h3>${starship}</h3><p>Starship</p></div></div>
-                    <div class="col-md-2"><div class="card summary-card bg-success text-white"><h4>${crew}</h4><p>ISS Crew</p></div></div>
-                    <div class="col-md-2"><div class="card summary-card bg-success text-white"><h4>${cargo}</h4><p>ISS Cargo</p></div></div>
-                    <div class="col-md-2"><div class="card summary-card bg-warning text-dark"><h4>${rideshare}</h4><p>Rideshare</p></div></div>
-                    <div class="col-md-3"><div class="card summary-card bg-secondary text-white"><h4>${commercial}</h4><p>Commercial Customer</p></div></div>
-                    <div class="col-md-3"><div class="card summary-card bg-secondary text-white"><h4>${privatePayload}</h4><p>Private Payload (Starlink)</p></div></div>
+                    <div class="col"><div class="card summary-card bg-primary text-white"><h3>${total}</h3><p>Total Successful Launches</p></div></div>
+                    <div class="col"><div class="card summary-card bg-info text-white"><h3>${falcon9}</h3><p>Falcon 9</p></div></div>
+                    <div class="col"><div class="card summary-card bg-info text-white"><h3>${falconHeavy}</h3><p>Falcon Heavy</p></div></div>
+                    <div class="col"><div class="card summary-card bg-dark text-white"><h3>${starship}</h3><p>Starship</p></div></div>
+                    <div class="col"><div class="card summary-card bg-success text-white"><h4>${crew}</h4><p>ISS Crew</p></div></div>
+                    <div class="col"><div class="card summary-card bg-success text-white"><h4>${cargo}</h4><p>ISS Cargo</p></div></div>
+                    <div class="col"><div class="card summary-card bg-warning text-dark"><h4>${rideshare}</h4><p>Rideshare</p></div></div>
+                    <div class="col"><div class="card summary-card bg-secondary text-white"><h4>${commercial}</h4><p>Commercial Customer</p></div></div>
+                    <div class="col"><div class="card summary-card bg-secondary text-white"><h4>${privatePayload}</h4><p>Private Payload (Starlink)</p></div></div>
                 `;
 
                 // Table
@@ -212,7 +278,7 @@
 
                     let links = [];
                     if (patch) links.push(`<img src="${patch}" class="patch-img" alt="Patch">`);
-                    if (launch.links.wikipedia) links.push(`<a href="${launch.links.wikipedia}" target="_blank">Wiki</a>`);
+                    if (launch.links.wikipedia) links.push(`<a href="${launch.links.wikipedia}" target="_blank" class="text-light">Wiki</a>`);
 
                     tableHTML += `
                         <tr>
