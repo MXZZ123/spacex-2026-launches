@@ -44,7 +44,7 @@
 
             // Earth with texture
             const earthGeometry = new THREE.SphereGeometry(EARTH_RADIUS, 64, 64);
-            const earthTexture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/planets/earth_atmos_4096.jpg');
+            const earthTexture = new THREE.TextureLoader().load('https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg');
             const earthMaterial = new THREE.MeshPhongMaterial({ map: earthTexture, shininess: 10 });
             earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
             scene.add(earthMesh);
@@ -104,7 +104,7 @@
             return new THREE.Vector3(
                 r * Math.cos(phi) * Math.cos(theta),
                 r * Math.sin(phi),
-                r * Math.cos(phi) * Math.sin(theta)  // Removed negative sign for correct orientation
+                -r * Math.cos(phi) * Math.sin(theta)  // Added negative sign back for correct orientation
             );
         }
 
@@ -156,7 +156,21 @@
             ).filter(p => p.norad_id);
 
             for (const payload of payloads) {
-                const tle = await fetchTLE(payload.norad_id);
+                let tle = await fetchTLE(payload.norad_id);
+                if (!tle) {
+                    // Hardcode TLE for demo if fetch fails
+                    if (payload.norad_id === 31598) {
+                        tle = {
+                            line1: "1 31598U 07023A   26005.26744262  .00005428  00000+0  48934-3 0  9993",
+                            line2: "2 31598  97.8832 195.8240 0001497  87.4959 272.6433 14.95981519  5427"
+                        };
+                    } else if (payload.norad_id === 44961) {
+                        tle = {
+                            line1: "1 44961U 20001AZ  26005.58336806  .00069845  00000+0  18258-2 0  9996",
+                            line2: "2 44961  53.0532 227.6623 0001183 110.5110 267.9787 15.38145184  5825"
+                        };
+                    } // Add more if needed
+                }
                 if (tle) {
                     const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
                     const mesh = new THREE.Mesh(
