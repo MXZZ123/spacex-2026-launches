@@ -84,19 +84,15 @@
             <button class="btn btn-primary" onclick="window.open('satellites.html', '_blank')">View Satellite Simulation</button>
         </div>
         <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3" id="summary-row"></div>
-
         <h2 class="mt-5">Completed Successful Launches</h2>
         <div id="launches-table"></div>
-
         <div id="no-launches" class="alert alert-info mt-4" style="display:none;">
             No successful launches completed yet in 2026.
         </div>
-
         <footer class="text-center text-muted mt-5">
             Data from community SpaceX API (with temporary fallback for recent launches) • Updates automatically • Only successful completed launches in 2026 counted
         </footer>
     </div>
-
     <script>
         async function loadLaunches() {
             try {
@@ -129,21 +125,18 @@
                         }
                     })
                 });
-
                 const data = await response.json();
                 let allLaunches = data.docs || [];
                 const now = new Date();
-
                 let completedSuccessful = allLaunches.filter(l => {
                     const launchDate = new Date(l.date_utc);
                     return launchDate <= now && l.success === true;
                 });
-
                 // Temporary fallback for early 2026 launches if API hasn't updated yet
                 if (completedSuccessful.length === 0) {
                     completedSuccessful = [
                         {
-                            date_utc: "2026-01-03T02:09:00Z",  // Jan 2, 2026 6:09 PM PST / 02:09 UTC Jan 3
+                            date_utc: "2026-01-03T02:09:00Z", // Jan 2, 2026 6:09 PM PST / 02:09 UTC Jan 3
                             success: true,
                             rocket: { name: "Falcon 9" },
                             name: "COSMO-SkyMed CSG-FM3",
@@ -155,7 +148,7 @@
                             payloads: [{name: "COSMO-SKYMED-FM3", norad_id: 67304}]
                         },
                         {
-                            date_utc: "2026-01-04T06:48:00Z",  // Jan 4, 2026 1:48 AM EST / 06:48 UTC
+                            date_utc: "2026-01-04T06:48:00Z", // Jan 4, 2026 1:48 AM EST / 06:48 UTC
                             success: true,
                             rocket: { name: "Falcon 9" },
                             name: "Starlink Group 6-88",
@@ -168,22 +161,17 @@
                         }
                     ];
                 }
-
-                document.getElementById('last-updated').textContent = 
+                document.getElementById('last-updated').textContent =
                     `Data current as of ${now.toLocaleString()} (refreshes on page load)${allLaunches.length === 0 ? ' • Using fallback data' : ''}`;
-
                 // Counts
                 const total = completedSuccessful.length;
                 const falcon9 = completedSuccessful.filter(l => l.rocket.name.includes("Falcon 9")).length;
                 const falconHeavy = completedSuccessful.filter(l => l.rocket.name.includes("Heavy")).length;
                 const starship = completedSuccessful.filter(l => l.rocket.name.includes("Starship")).length;
-
-                const falconLaunches = completedSuccessful.filter(l => 
+                const falconLaunches = completedSuccessful.filter(l =>
                     l.rocket.name.includes("Falcon 9") || l.rocket.name.includes("Heavy")
                 );
-
                 let crew = 0, cargo = 0, rideshare = 0, commercial = 0, privatePayload = 0;
-
                 falconLaunches.forEach(l => {
                     const nameLower = (l.name || "").toLowerCase();
                     if (nameLower.includes("crew-")) {
@@ -200,7 +188,6 @@
                         commercial++;
                     }
                 });
-
                 // Summary cards
                 const summaryRow = document.getElementById('summary-row');
                 summaryRow.innerHTML = `
@@ -214,7 +201,6 @@
                     <div class="col"><div class="card summary-card bg-secondary text-white"><h4>${commercial}</h4><p>Commercial Customer</p></div></div>
                     <div class="col"><div class="card summary-card bg-secondary text-white"><h4>${privatePayload}</h4><p>Private Payload (Starlink)</p></div></div>
                 `;
-
                 // Table
                 const tableDiv = document.getElementById('launches-table');
                 if (completedSuccessful.length === 0) {
@@ -222,7 +208,6 @@
                     tableDiv.innerHTML = '';
                     return;
                 }
-
                 let tableHTML = `
                     <table class="table table-striped table-hover mt-3">
                         <thead class="table-dark">
@@ -239,13 +224,11 @@
                         </thead>
                         <tbody>
                 `;
-
                 completedSuccessful.forEach(launch => {
                     const date = new Date(launch.date_utc).toLocaleString();
                     const rocket = launch.rocket.name;
                     const missionName = launch.name;
                     const patch = launch.links.patch?.small || '';
-
                     let type = "Unknown";
                     if (rocket.includes("Starship")) {
                         type = "Starship Flight";
@@ -258,11 +241,9 @@
                         else if (nameLower.includes("cosmo-skymed") || nameLower.includes("csg-")) type = "Government Agency Payload";
                         else type = "Commercial Customer Payload";
                     }
-
                     let achievements = [];
                     achievements.push(`<strong>Overall:</strong> Mission success`);
                     if (launch.details) achievements.push(`<em>${launch.details}</em>`);
-
                     if (launch.cores && launch.cores.length > 0) {
                         launch.cores.forEach((core, i) => {
                             const serial = core.core?.serial || `#${i+1}`;
@@ -274,15 +255,12 @@
                             }
                         });
                     }
-
                     if (launch.fairings && launch.fairings.recovery_attempt) {
                         achievements.push(`<strong>Fairings:</strong> Recovery ${launch.fairings.recovered ? "successful" : "attempted"}`);
                     }
-
                     let links = [];
                     if (patch) links.push(`<img src="${patch}" class="patch-img" alt="Patch">`);
                     if (launch.links.wikipedia) links.push(`<a href="${launch.links.wikipedia}" target="_blank" class="text-light">Wiki</a>`);
-
                     tableHTML += `
                         <tr>
                             <td>${patch ? `<img src="${patch}" class="patch-img" alt="Patch">` : ''}</td>
@@ -296,16 +274,13 @@
                         </tr>
                     `;
                 });
-
                 tableHTML += `</tbody></table>`;
                 tableDiv.innerHTML = tableHTML;
-
             } catch (err) {
                 document.getElementById('last-updated').textContent = 'Error loading data – try refreshing';
                 console.error(err);
             }
         }
-
         loadLaunches();
     </script>
 </body>
