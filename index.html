@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceX 2026 Launch Tracker</title>
+    <!-- Bootstrap CDN for nice styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; background-color: #f8f9fa; }
+        .summary-card { text-align: center; padding: 20px; margin-bottom: 20px; }
+        .patch-img { width: 60px; height: auto; }
+        .achievements { font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center my-4">SpaceX Launch Tracker – 2026</h1>
+        <p class="text-center text-muted" id="last-updated">Loading data...</p>
+
+        <div class="row" id="summary-row">
+            <!-- Summary cards will be inserted here by JS -->
+        </div>
+
+        <h2 class="mt-5">Completed Successful Launches</h2>
+        <div id="launches-table"></div>
+
+        <div id="no-launches" class="alert alert-info mt-4" style="display:none;">
+            No successful launches completed yet in 2026.
+        </div>
+
+        <footer class="text-center text-muted mt-5">
+            Data from the community SpaceX API • Site updates automatically • Only successful completed launches in 2026 are counted
+        </footer>
+    </div>
+
+    <script>
+        async function loadLaunches() {
+            try {
+                const response = await fetch('https://api.spacexdata.com/v5/launches/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: {
+                            date_utc: {
+                                $gte: "2026-01-01T00:00:00Z",
+                                $lte: "2026-12-31T23:59:59Z"
+                            }
+                        },
+                        options: {
+                            sort: { date_utc: "asc" },
+                            limit: 200,
+                            populate: [
+                                "rocket",
+                                "launchpad",
+                                {
+                                    path: "cores",
+                                    populate: [
+                                        { path: "core", select: ["serial"] },
+                                        { path: "landpad", select: ["name", "full_name"] }
+                                    ]
+                                }
+                            ]
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                const allLaunches = data.docs || [];
+                const now = new Date();
+
+                // Filter only completed successful launches
+                const completedSuccessful = allLaunches.filter(l => {
+                    const launchDate = new Date(l.date_utc);
+                    return launchDate <= now && l.success === true;
+                });
+
+                document.getElementById('last-updated').textContent = 
+                    `Data current as of ${now.toLocaleString()} (refreshes on page load)`;
+
+                // Counts
+                const total = completedSuccessful.length;
+
+                const falcon9 = completedSuccessful.filter(l => l.rocket.name.includes("Falcon 9")).length;
+                const falconHeavy = completedSuccessful.filter(l => l.rocket.name.includes("Heavy")).length;
+                const starship = completedSuccessful.filter(l => l.rocket.name.includes("Starship")).length;
+
+                // Falcon family only for mission types
+                const falconLaunches = completedSuccessful.filter(l => 
+                    l.rocket.name.includes("Falcon 9") || l.rocket.name.includes("Heavy")
+                );
+
+                let crew = 0, cargo = 0, rideshare = 0, commercial = 0, privatePayload = 0;
+                falconLaunches.forEach(l => {
+                    const name = (l.name || "").toLowerCase();
+                    if (name.includes("crew-")) crew++;
+                    else if (name.includes("crs-")) cargo++;
+                    else if (name.includes("transporter") || name.includes("bandwagon")) rideshare++;
+                    else if (name.includes("starlink") || name.includes("starshield")) privatePayload++;
+                    else commercial++;
+                });
+
+                // Insert summary cards
+                const summaryRow = document.getElementById('summary-row');
+                summaryRow.innerHTML = `
+                    <div class="col-md-3"><div class="card summary-card bg-primary text-white"><h3>${total}</h3><p>Total Successful Launches</p></div></div>
+                    <div class="col-md-3"><div class="card summary-card bg-info text-white"><h3>${falcon9}</h3><p>Falcon 9</p></div></div>
+                    <div class="col-md-3"><div class="card summary-card bg-info text-white"><h3>${falconHeavy}</h3><p>Falcon Heavy</p></div></div>
+                    <div class="col-md-3"><div class="card summary-card bg-dark text-white"><h3>${starship}</h3><p>Starship</p></div></div>
+                    <div class="col-md-2"><div class="card summary-card bg-success text-white"><h4>${crew}</h4><p>ISS Crew</p></div></div>
+                    <div class="col-md-2"><div class="card summary-card bg-success text-white"><h4>${cargo}</h4><p>ISS Cargo</p></div></div>
+                    <div class="col-md-2"><div class="card summary-card bg-warning text-dark"><h4>${rideshare}</h4><p>Rideshare</p></div></div>
+                    <div class="col-md-3"><div class="card summary-card bg-secondary text-white"><h4>${commercial}</h4><p>Commercial Customer</p></div></div>
+                    <div class="col-md-3"><div class="card summary-card bg-secondary text-white"><h4>${privatePayload}</h4><p>Private Payload (Starlink)</p></div></div>
+                `;
+
+                // Build table
+                const tableDiv = document.getElementById('launches-table');
+                if (completedSuccessful.length === 0) {
+                    document.getElementById('no-launches').style.display = 'block';
+                    tableDiv.innerHTML = '';
+                    return;
+                }
+
+                let tableHTML = `
+                    <table class="table table-striped table-hover mt-3">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Patch</th>
+                                <th>Date (UTC)</th>
+                                <th>Flight #</th>
+                                <th>Rocket</th>
+                                <th>Mission</th>
+                                <th>Type</th>
+                                <th>Objectives / Achievements</th>
+                                <th>Links</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                completedSuccessful.forEach(launch => {
+                    const date = new Date(launch.date_utc).toLocaleString();
+                    const rocket = launch.rocket.name;
+                    const missionName = launch.name;
+                    const patch = launch.links.patch?.small || '';
+
+                    // Determine type (same logic as counts)
+                    let type = "Unknown";
+                    if (rocket.includes("Starship")) type = "Starship Flight";
+                    else {
+                        const nameLower = missionName.toLowerCase();
+                        if (nameLower.includes("crew-")) type = "ISS Crew Mission";
+                        else if (nameLower.includes("crs-")) type = "ISS Cargo Resupply";
+                        else if (nameLower.includes("transporter") || nameLower.includes("bandwagon")) type = "Rideshare";
+                        else if (nameLower.includes("starlink") || nameLower.includes("starshield")) type = "Private Payload (Starlink)";
+                        else type = "Commercial Customer Payload";
+                    }
+
+                    // Achievements / objectives
+                    let achievements = [];
+                    achievements.push(`<strong>Overall:</strong> Mission success`);
+
+                    if (launch.failures && launch.failures.length > 0) {
+                        achievements.push(`<strong>Issues:</strong> ${launch.failures.map(f => f.reason).join("; ")}`);
+                    }
+
+                    if (launch.cores && launch.cores.length > 0) {
+                        launch.cores.forEach((core, i) => {
+                            const serial = core.core?.serial || `#${i+1}`;
+                            if (core.landing_attempt) {
+                                const location = core.landpad?.full_name || core.landpad?.name || core.landing_type || "unknown";
+                                achievements.push(`<strong>Booster ${serial}:</strong> ${core.landing_success ? "Landed successfully" : "Landing failed"} at ${location}`);
+                            } else {
+                                achievements.push(`<strong>Booster ${serial}:</strong> Expended (no landing attempt)`);
+                            }
+                        });
+                    }
+
+                    if (launch.fairings) {
+                        if (launch.fairings.recovery_attempt) {
+                            achievements.push(`<strong>Fairings:</strong> Recovery ${launch.fairings.recovered ? "successful" : "attempted (outcome unknown/partially failed)"}`);
+                        }
+                    }
+
+                    if (rocket.includes("Starship") && launch.details) {
+                        achievements.push(`<em>${launch.details}</em>`);
+                    }
+
+                    // Links
+                    let links = [];
+                    if (patch) links.push(`<img src="${patch}" class="patch-img" alt="Patch">`);
+                    if (launch.links.wikipedia) links.push(`<a href="${launch.links.wikipedia}" target="_blank">Wiki</a>`);
+                    if (launch.links.webcast) links.push(`<a href="${launch.links.webcast}" target="_blank">Replay</a>`);
+                    if (launch.links.reddit?.launch) links.push(`<a href="${launch.links.reddit.launch}" target="_blank">Reddit</a>`);
+
+                    tableHTML += `
+                        <tr>
+                            <td>${patch ? `<img src="${patch}" class="patch-img" alt="Patch">` : ''}</td>
+                            <td>${date}</td>
+                            <td>${launch.flight_number || '-'}</td>
+                            <td>${rocket}</td>
+                            <td>${missionName}</td>
+                            <td>${type}</td>
+                            <td class="achievements"><ul class="list-unstyled mb-0">${achievements.map(a => `<li>${a}</li>`).join('')}</ul></td>
+                            <td>${links.join(' | ')}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `</tbody></table>`;
+                tableDiv.innerHTML = tableHTML;
+
+            } catch (err) {
+                document.getElementById('last-updated').textContent = 'Error loading data – try refreshing';
+                console.error(err);
+            }
+        }
+
+        loadLaunches();
+    </script>
+</body>
+</html>
