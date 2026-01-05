@@ -132,7 +132,7 @@
                     return launchDate <= now && l.success === true;
                 });
 
-                // Fallback data (as of January 5, 2026)
+                // Fallback data with real NORAD IDs for demonstration
                 if (completedSuccessful.length === 0) {
                     completedSuccessful = [
                         {
@@ -146,7 +146,7 @@
                             cores: [{ landing_attempt: true, landing_success: true, landpad: { full_name: "Landing Zone 4" }, core: { serial: "B1081" } }],
                             fairings: { recovery_attempt: true, recovered: true },
                             details: "Earth observation satellite for Italian Space Agency (ASI) and Ministry of Defence.",
-                            payloads: [{ name: "COSMO-SkyMed CSG-FM3", norad_id: null }]
+                            payloads: [{ name: "COSMO-SKYMED 1", norad_id: 31598 }]
                         },
                         {
                             date_utc: "2026-01-04T06:48:00Z",
@@ -158,8 +158,12 @@
                             failures: [],
                             cores: [{ landing_attempt: true, landing_success: true, landpad: { full_name: "A Shortfall of Gravitas" }, core: { serial: "B1101" } }],
                             fairings: { recovery_attempt: true, recovered: true },
-                            details: "Deployment of 29 Starlink v2 Mini satellites.",
-                            payloads: Array.from({length: 29}, (_, i) => ({ name: `Starlink-${i+1}`, norad_id: null }))
+                            details: "Deployment of Starlink v2 Mini satellites (demo with real data).",
+                            payloads: [
+                                { name: "Starlink-1132", norad_id: 45044 },
+                                { name: "Starlink-1090", norad_id: 44968 },
+                                { name: "Starlink-1080", norad_id: 44961 }
+                            ]
                         }
                     ];
                 }
@@ -167,7 +171,6 @@
                 document.getElementById('last-updated').textContent =
                     `Data current as of ${now.toLocaleString()} (refreshes on page load)${allLaunches.length === 0 ? ' • Using fallback data' : ''}`;
 
-                // Counts and summary cards (unchanged logic)
                 const total = completedSuccessful.length;
                 const falcon9 = completedSuccessful.filter(l => l.rocket.name.includes("Falcon 9")).length;
                 const falconHeavy = completedSuccessful.filter(l => l.rocket.name.includes("Heavy")).length;
@@ -196,7 +199,6 @@
                     <div class="col"><div class="card summary-card bg-secondary text-white"><h4>${privatePayload}</h4><p>Private Payload (Starlink)</p></div></div>
                 `;
 
-                // Table rendering (unchanged)
                 const tableDiv = document.getElementById('launches-table');
                 if (completedSuccessful.length === 0) {
                     document.getElementById('no-launches').style.display = 'block';
