@@ -27,14 +27,16 @@
         </div>
 
         <footer class="text-center text-muted mt-5">
-            Data from community SpaceX API (with temporary fallback for recent launches) • Updates automatically • Only successful completed launches in 2026 counted
+            Data from community SpaceX API (with temporary fallback for recent launches) • Updates automatically • Only successful completed launches in 2026 counted • Using CORS proxy to enable API access
         </footer>
     </div>
 
     <script>
         async function loadLaunches() {
             try {
-                const response = await fetch('https://api.spacexdata.com/v5/launches/query', {
+                // Use CORS proxy to bypass potential CORS issues with POST
+                const apiUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://api.spacexdata.com/v5/launches/query');
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
