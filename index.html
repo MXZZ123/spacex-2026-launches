@@ -8,8 +8,8 @@
     <style>
         body {
             padding: 20px;
-            background-color: #121212; /* Dark background for SpaceX theme */
-            color: #ffffff; /* Light text */
+            background-color: #121212;
+            color: #ffffff;
             font-family: 'Arial', sans-serif;
         }
         .container {
@@ -80,8 +80,10 @@
     <div class="container">
         <h1 class="text-center my-4">SpaceX Launch Tracker – 2026</h1>
         <p class="text-center text-muted" id="last-updated">Loading data...</p>
-
-        <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3" id="summary-row"></div> <!-- Improved grid with gaps -->
+        <div class="text-center mb-4">
+            <button class="btn btn-primary" onclick="window.open('satellites.html', '_blank')">View Satellite Simulation</button>
+        </div>
+        <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3" id="summary-row"></div>
 
         <h2 class="mt-5">Completed Successful Launches</h2>
         <div id="launches-table"></div>
@@ -98,7 +100,6 @@
     <script>
         async function loadLaunches() {
             try {
-                // Use CORS proxy to bypass potential CORS issues with POST
                 const apiUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://api.spacexdata.com/v5/launches/query');
                 const response = await fetch(apiUrl, {
                     method: 'POST',
@@ -116,6 +117,7 @@
                             populate: [
                                 "rocket",
                                 "launchpad",
+                                "payloads",
                                 {
                                     path: "cores",
                                     populate: [
@@ -149,7 +151,8 @@
                             failures: [],
                             cores: [{ landing_attempt: true, landing_success: true, landpad: { full_name: "Landing Zone 4" }, core: { serial: "B1081" } }],
                             fairings: { recovery_attempt: true, recovered: true },
-                            details: "Earth observation satellite for Italian Space Agency (ASI) and Ministry of Defence."
+                            details: "Earth observation satellite for Italian Space Agency (ASI) and Ministry of Defence.",
+                            payloads: [{name: "COSMO-SKYMED-FM3", norad_id: 67304}]
                         },
                         {
                             date_utc: "2026-01-04T06:48:00Z",  // Jan 4, 2026 1:48 AM EST / 06:48 UTC
@@ -160,7 +163,8 @@
                             failures: [],
                             cores: [{ landing_attempt: true, landing_success: true, landpad: { full_name: "A Shortfall of Gravitas" }, core: { serial: "B1101" } }],
                             fairings: { recovery_attempt: true, recovered: true },
-                            details: "Deployment of 29 Starlink v2 Mini satellites."
+                            details: "Deployment of 29 Starlink v2 Mini satellites.",
+                            payloads: Array.from({length: 29}, (v, i) => ({name: `Starlink-36${309 + i}`, norad_id: 67305 + i}))
                         }
                     ];
                 }
@@ -193,7 +197,6 @@
                     } else if (nameLower.includes("cosmo-skymed") || nameLower.includes("csg-")) {
                         // Government agency (ASI) - not commercial
                     } else {
-                        // Default to commercial if not a known government agency mission
                         commercial++;
                     }
                 });
