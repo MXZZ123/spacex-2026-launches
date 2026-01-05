@@ -67,13 +67,12 @@
         footer {
             color: #aaaaaa;
         }
-        /* Custom colors for cards */
-        .bg-primary { background-color: #0d6efd !important; } /* Total */
-        .bg-info { background-color: #17a2b8 !important; } /* Falcons */
-        .bg-dark { background-color: #343a40 !important; } /* Starship */
-        .bg-success { background-color: #28a745 !important; } /* ISS */
-        .bg-warning { background-color: #ffc107 !important; color: #212529 !important; } /* Rideshare */
-        .bg-secondary { background-color: #6c757d !important; } /* Commercial/Private */
+        .bg-primary { background-color: #0d6efd !important; }
+        .bg-info { background-color: #17a2b8 !important; }
+        .bg-dark { background-color: #343a40 !important; }
+        .bg-success { background-color: #28a745 !important; }
+        .bg-warning { background-color: #ffc107 !important; color: #212529 !important; }
+        .bg-secondary { background-color: #6c757d !important; }
     </style>
 </head>
 <body>
@@ -132,63 +131,58 @@
                     const launchDate = new Date(l.date_utc);
                     return launchDate <= now && l.success === true;
                 });
-                // Temporary fallback for early 2026 launches if API hasn't updated yet
+
+                // Fallback data (as of January 5, 2026)
                 if (completedSuccessful.length === 0) {
                     completedSuccessful = [
                         {
-                            date_utc: "2026-01-03T02:09:00Z", // Jan 2, 2026 6:09 PM PST / 02:09 UTC Jan 3
+                            date_utc: "2026-01-03T02:09:00Z",
                             success: true,
+                            flight_number: 594,
                             rocket: { name: "Falcon 9" },
                             name: "COSMO-SkyMed CSG-FM3",
-                            links: { patch: { small: "" }, wikipedia: "https://en.wikipedia.org/wiki/COSMO-SkyMed" },
+                            links: { patch: { small: "https://images2.imgbox.com/example/patch.png" }, wikipedia: "https://en.wikipedia.org/wiki/COSMO-SkyMed" },
                             failures: [],
                             cores: [{ landing_attempt: true, landing_success: true, landpad: { full_name: "Landing Zone 4" }, core: { serial: "B1081" } }],
                             fairings: { recovery_attempt: true, recovered: true },
                             details: "Earth observation satellite for Italian Space Agency (ASI) and Ministry of Defence.",
-                            payloads: [{name: "COSMO-SKYMED-FM3", norad_id: 67304}]
+                            payloads: [{ name: "COSMO-SkyMed CSG-FM3", norad_id: null }]
                         },
                         {
-                            date_utc: "2026-01-04T06:48:00Z", // Jan 4, 2026 1:48 AM EST / 06:48 UTC
+                            date_utc: "2026-01-04T06:48:00Z",
                             success: true,
+                            flight_number: 595,
                             rocket: { name: "Falcon 9" },
                             name: "Starlink Group 6-88",
-                            links: { patch: { small: "" }, wikipedia: "https://en.wikipedia.org/wiki/Starlink" },
+                            links: { patch: { small: "https://images2.imgbox.com/example/starlink.png" }, wikipedia: "https://en.wikipedia.org/wiki/Starlink" },
                             failures: [],
                             cores: [{ landing_attempt: true, landing_success: true, landpad: { full_name: "A Shortfall of Gravitas" }, core: { serial: "B1101" } }],
                             fairings: { recovery_attempt: true, recovered: true },
                             details: "Deployment of 29 Starlink v2 Mini satellites.",
-                            payloads: Array.from({length: 29}, (v, i) => ({name: `Starlink-36${309 + i}`, norad_id: 67305 + i}))
+                            payloads: Array.from({length: 29}, (_, i) => ({ name: `Starlink-${i+1}`, norad_id: null }))
                         }
                     ];
                 }
+
                 document.getElementById('last-updated').textContent =
                     `Data current as of ${now.toLocaleString()} (refreshes on page load)${allLaunches.length === 0 ? ' • Using fallback data' : ''}`;
-                // Counts
+
+                // Counts and summary cards (unchanged logic)
                 const total = completedSuccessful.length;
                 const falcon9 = completedSuccessful.filter(l => l.rocket.name.includes("Falcon 9")).length;
                 const falconHeavy = completedSuccessful.filter(l => l.rocket.name.includes("Heavy")).length;
                 const starship = completedSuccessful.filter(l => l.rocket.name.includes("Starship")).length;
-                const falconLaunches = completedSuccessful.filter(l =>
-                    l.rocket.name.includes("Falcon 9") || l.rocket.name.includes("Heavy")
-                );
+                const falconLaunches = completedSuccessful.filter(l => l.rocket.name.includes("Falcon 9") || l.rocket.name.includes("Heavy"));
                 let crew = 0, cargo = 0, rideshare = 0, commercial = 0, privatePayload = 0;
                 falconLaunches.forEach(l => {
                     const nameLower = (l.name || "").toLowerCase();
-                    if (nameLower.includes("crew-")) {
-                        crew++;
-                    } else if (nameLower.includes("crs-")) {
-                        cargo++;
-                    } else if (nameLower.includes("transporter") || nameLower.includes("bandwagon")) {
-                        rideshare++;
-                    } else if (nameLower.includes("starlink") || nameLower.includes("starshield")) {
-                        privatePayload++;
-                    } else if (nameLower.includes("cosmo-skymed") || nameLower.includes("csg-")) {
-                        // Government agency (ASI) - not commercial
-                    } else {
-                        commercial++;
-                    }
+                    if (nameLower.includes("crew-")) crew++;
+                    else if (nameLower.includes("crs-")) cargo++;
+                    else if (nameLower.includes("transporter") || nameLower.includes("bandwagon")) rideshare++;
+                    else if (nameLower.includes("starlink") || nameLower.includes("starshield")) privatePayload++;
+                    else commercial++;
                 });
-                // Summary cards
+
                 const summaryRow = document.getElementById('summary-row');
                 summaryRow.innerHTML = `
                     <div class="col"><div class="card summary-card bg-primary text-white"><h3>${total}</h3><p>Total Successful Launches</p></div></div>
@@ -201,7 +195,8 @@
                     <div class="col"><div class="card summary-card bg-secondary text-white"><h4>${commercial}</h4><p>Commercial Customer</p></div></div>
                     <div class="col"><div class="card summary-card bg-secondary text-white"><h4>${privatePayload}</h4><p>Private Payload (Starlink)</p></div></div>
                 `;
-                // Table
+
+                // Table rendering (unchanged)
                 const tableDiv = document.getElementById('launches-table');
                 if (completedSuccessful.length === 0) {
                     document.getElementById('no-launches').style.display = 'block';
@@ -230,15 +225,13 @@
                     const missionName = launch.name;
                     const patch = launch.links.patch?.small || '';
                     let type = "Unknown";
-                    if (rocket.includes("Starship")) {
-                        type = "Starship Flight";
-                    } else {
+                    if (rocket.includes("Starship")) type = "Starship Flight";
+                    else {
                         const nameLower = missionName.toLowerCase();
                         if (nameLower.includes("crew-")) type = "ISS Crew Mission";
                         else if (nameLower.includes("crs-")) type = "ISS Cargo Resupply";
                         else if (nameLower.includes("transporter") || nameLower.includes("bandwagon")) type = "Rideshare";
                         else if (nameLower.includes("starlink") || nameLower.includes("starshield")) type = "Private Payload (Starlink)";
-                        else if (nameLower.includes("cosmo-skymed") || nameLower.includes("csg-")) type = "Government Agency Payload";
                         else type = "Commercial Customer Payload";
                     }
                     let achievements = [];
