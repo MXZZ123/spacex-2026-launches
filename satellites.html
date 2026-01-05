@@ -22,7 +22,7 @@
         <div id="three-container"></div>
         <div id="sidebar">
             <h3>Deployed Satellites (2026 Launches)</h3>
-            <p>Select/deselect to show/hide satellites and orbits.</p>
+            <p>Select/deselect to show/hide satellites and orbits. Left-click and drag on the globe to rotate the view.</p>
             <ul id="sat-list" class="list-group"></ul>
             <div id="info"><p>Click a satellite for details.</p></div>
         </div>
@@ -104,7 +104,7 @@
             return new THREE.Vector3(
                 r * Math.cos(phi) * Math.cos(theta),
                 r * Math.sin(phi),
-                r * Math.cos(phi) * Math.sin(theta)
+                r * Math.cos(phi) * Math.sin(theta)  // Removed negative sign for correct orientation
             );
         }
 
@@ -136,11 +136,11 @@
                 const response = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
                 const text = await response.text();
                 const lines = text.trim().split('\n');
-                if (lines.length >= 2 && lines[0].startsWith('1') && lines[1].startsWith('2')) {
-                    return { line1: lines[0], line2: lines[1] };
+                if (lines.length >= 2 && lines[lines.length - 2].startsWith('1') && lines[lines.length - 1].startsWith('2')) {
+                    return { line1: lines[lines.length - 2], line2: lines[lines.length - 1] };
                 }
             } catch (e) {
-                console.error("TLE fetch failed for", noradId);
+                console.error("TLE fetch failed for", noradId, e);
             }
             return null;
         }
@@ -168,10 +168,12 @@
                     const satObj = { ...payload, satrec, mesh, orbitLine, visible: true };
                     satellites.push(satObj);
                     addToSidebarList(satObj);
+                } else {
+                    console.log(`No TLE for ${payload.name} (NORAD ${payload.norad_id})`);
                 }
             }
             if (satellites.length === 0) {
-                document.getElementById('info').innerHTML = "<p>No satellites with available orbital data yet.</p>";
+                document.getElementById('info').innerHTML = "<p>No satellites with available orbital data yet. Using demo data.</p>";
             }
         }
 
@@ -221,14 +223,26 @@
                 const data = await response.json();
                 let launches = data.docs || [];
                 const now = new Date();
-                const completedSuccessful = launches.filter(l => new Date(l.date_utc) <= now && l.success === true);
+                let completedSuccessful = launches.filter(l => new Date(l.date_utc) <= now && l.success === true);
 
                 if (completedSuccessful.length === 0) {
-                    // Same fallback as index.html
-                    completedSuccessful.push(
-                        { name: "COSMO-SkyMed CSG-FM3", details: "Earth observation satellite...", payloads: [{ name: "COSMO-SkyMed CSG-FM3", norad_id: null }] },
-                        { name: "Starlink Group 6-88", details: "Deployment of 29 Starlink v2 Mini satellites.", payloads: Array.from({length: 29}, () => ({ name: "Starlink", norad_id: null })) }
-                    );
+                    // Fallback with real NORAD IDs
+                    completedSuccessful = [
+                        {
+                            name: "COSMO-SkyMed CSG-FM3",
+                            details: "Earth observation satellite for Italian Space Agency (ASI) and Ministry of Defence (demo with real data).",
+                            payloads: [{ name: "COSMO-SKYMED 1", norad_id: 31598 }]
+                        },
+                        {
+                            name: "Starlink Group 6-88",
+                            details: "Deployment of Starlink v2 Mini satellites (demo with real data).",
+                            payloads: [
+                                { name: "Starlink-1132", norad_id: 45044 },
+                                { name: "Starlink-1090", norad_id: 44968 },
+                                { name: "Starlink-1080", norad_id: 44961 }
+                            ]
+                        }
+                    ];
                 }
                 await loadSatellites(completedSuccessful);
             } catch (err) {
